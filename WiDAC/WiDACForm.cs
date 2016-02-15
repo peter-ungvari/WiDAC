@@ -16,6 +16,7 @@ using CSCore.Codecs.WAV;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows.Forms.VisualStyles;
+using NReco.VideoConverter;
 
 namespace WiDAC
 {
@@ -30,7 +31,8 @@ namespace WiDAC
         private WaveWriter outputWaveWriter;
         private WaveWriter inputWaveWriter;
         private bool recording;
-        System.Windows.Forms.Timer previewTimer = new System.Windows.Forms.Timer();
+        private System.Windows.Forms.Timer previewTimer = new System.Windows.Forms.Timer();
+        private FFMpegConverter ffmpeg = new FFMpegConverter();
 
         public WiDACForm()
         {
@@ -82,9 +84,17 @@ namespace WiDAC
                     return;
                 }
 
-                //TODO Call FFMPEG
-                Trace.TraceInformation("audio bitrate: {0}, audio sample rate: {1}, audio input file1: {2}, audio input file2: {3}, video file: {4}, output file: {5}", 
+                Trace.TraceInformation("audio bitrate: {0}, audio sample rate: {1}, audio input file1: {2}, audio input file2: {3}, video file: {4}, output file: {5}",
                     bitRateComboBox.SelectedValue, rateComboBox.SelectedValue, OutputAudioFileName, InputAudioFileName, CapturedVideoFileName, dialog.FileName);
+
+                ffmpeg.ConvertMedia(null, null, dialog.FileName, Format.mp4, new ConvertSettings()
+                {
+                    CustomInputArgs = String.Format("-i {0} -i {1} -i {2}", OutputAudioFileName, InputAudioFileName, CapturedVideoFileName),
+                    AudioCodec = "aac",
+                    AudioSampleRate = (int)rateComboBox.SelectedValue,
+                    CustomOutputArgs = String.Format("-ac 1 -ab {0}", bitRateComboBox.SelectedIndex),
+                    VideoCodec = "copy"
+                });
 
             }
         }
@@ -232,7 +242,7 @@ namespace WiDAC
                 return;
             }
 
-            DeleteFiles(new string[]{InputAudioFileName, OutputAudioFileName, CapturedVideoFileName});
+            DeleteFiles(new string[] { InputAudioFileName, OutputAudioFileName, CapturedVideoFileName });
 
             outputCapture = new WasapiLoopbackCapture();
 
@@ -260,10 +270,19 @@ namespace WiDAC
             groupBox2.Enabled = false;
             groupBox3.Enabled = false;
 
-            Rectangle screenRectangle = ((Screen) screenComboBox.SelectedValue).Bounds;
-            //TODO call FFMPEG
+            Rectangle screenRectangle = ((Screen)screenComboBox.SelectedValue).Bounds;
+
             Trace.TraceInformation("video file: {0}, video crf: {1}, video offset x: {2}, video offset y: {3}",
                 CapturedVideoFileName, crfComboBox.SelectedValue, screenRectangle.X, screenRectangle.Y);
+
+           ffmpeg.ConvertMedia("desktop", null, CapturedVideoFileName, "mp4", new ConvertSettings()
+            {
+                CustomInputArgs = String.Format("-f gdigrab -offset_x {0} -offset_y {1} -video_size {2}x{3} -i ",
+                screenRectangle.X, screenRectangle.Y, screenRectangle.Width, screenRectangle.Height),
+                VideoFrameRate = (int)frameRateComboBox.SelectedValue,
+                VideoCodec = "libx264",
+                CustomOutputArgs = String.Format("-cfr {0}", crfComboBox.SelectedValue)
+            });
 
         }
 
@@ -285,8 +304,6 @@ namespace WiDAC
             groupBox1.Enabled = true;
             groupBox2.Enabled = true;
             groupBox3.Enabled = true;
-
-            //TODO stop FFMPEG
 
             if (outputWaveWriter != null)
             {
