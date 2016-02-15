@@ -14,19 +14,22 @@ using CSCore.CoreAudioAPI;
 using System.Threading;
 using CSCore.Codecs.WAV;
 using System.IO;
+using System.Text.RegularExpressions;
+using System.Windows.Forms.VisualStyles;
 
 namespace WiDAC
 {
     public partial class WiDACForm : Form
     {
+        private const string OutputAudioFileName = "temp_out.wav";
+        private const string InputAudioFileName = "temp_in.wav";
+        private const string CapturedVideoFileName = "temp_video.mp4";
+
         private WasapiCapture outputCapture;
         private WasapiCapture inputCapture;
         private WaveWriter outputWaveWriter;
         private WaveWriter inputWaveWriter;
         private bool recording;
-        private Stopwatch stopwatch = Stopwatch.StartNew();
-        private long frameCount;
-        System.Windows.Forms.Timer recordingTimer = new System.Windows.Forms.Timer();
         System.Windows.Forms.Timer previewTimer = new System.Windows.Forms.Timer();
 
         public WiDACForm()
@@ -37,16 +40,53 @@ namespace WiDAC
             LoadDevices(DataFlow.Render, outputDeviceComboBox);
 
             previewPanel.BackgroundImageLayout = ImageLayout.Zoom;
-
-            recordingTimer.Interval = 40;
-
-            previewTimer.Interval = 1000;
+            previewTimer.Interval = 300;
             previewTimer.Start();
-
-            recordingTimer.Tick += RecordingTimerTick;
             previewTimer.Tick += previewTimer_Tick;
             captureCheckBox.Click += captureCheckBox_Click;
+            FormClosing += Question;
+        }
 
+        private void Question(object sender, CancelEventArgs e)
+        {
+            DialogResult questionResult = MessageBox.Show(
+                "Do you want to save the captured audio and video?\n\n" +
+                "Yes: Save captured media to a video file.\n" +
+                "No: Discard captured media.\n" +
+                "Cancel: Keep capturing.",
+                "Save captured media?",
+                MessageBoxButtons.YesNoCancel,
+                MessageBoxIcon.Question);
+
+            if (DialogResult.Cancel == questionResult)
+            {
+                e.Cancel = true;
+                return;
+            }
+
+            Stop();
+
+            if (DialogResult.Yes == questionResult)
+            {
+                SaveFileDialog dialog = new SaveFileDialog();
+                dialog.AddExtension = true;
+                dialog.DefaultExt = "mp4";
+                dialog.Filter = "MPEG-4 Files (*.mp4)|*.mp4";
+                dialog.RestoreDirectory = true;
+
+                DialogResult saveFileResult = dialog.ShowDialog(this);
+
+                if (saveFileResult != DialogResult.OK)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+
+                //TODO Call FFMPEG
+                Trace.TraceInformation("audio bitrate: {0}, audio sample rate: {1}, audio input file1: {2}, audio input file2: {3}, video file: {4}, output file: {5}", 
+                    bitRateComboBox.SelectedValue, rateComboBox.SelectedValue, OutputAudioFileName, InputAudioFileName, CapturedVideoFileName, dialog.FileName);
+
+            }
         }
 
         void previewTimer_Tick(object sender, EventArgs e)
@@ -75,36 +115,15 @@ namespace WiDAC
             if (!recording)
             {
                 Start();
-            }
-            else
-            {
-                Stop();
-            }
-        }
-
-        private void RecordingTimerTick(object sender, EventArgs e)
-        {
-            if (!recording)
-            {
                 return;
             }
 
-            if (frameCount < stopwatch.ElapsedMilliseconds / 1000.0 * (int)frameRateComboBox.SelectedValue)
+            CancelEventArgs cancel = new CancelEventArgs();
+            Question(sender, cancel);
+
+            if (cancel.Cancel)
             {
-                try
-                {
-                    ++frameCount;
-
-                    Bitmap bmpScreenshot = CreateScreenshot();
-                    // Save the screenshot to the specified path that the user has chosen.
-                    bmpScreenshot.Save(string.Format("Screenshot{0}.png", frameCount), ImageFormat.Png);
-                    bmpScreenshot.Dispose();
-                }
-                catch (ArgumentException ex)
-                {
-                    Trace.TraceError("ArgumentException on capture", ex.StackTrace);
-                }
-
+                captureCheckBox.CheckState = CheckState.Checked;
             }
         }
 
@@ -148,7 +167,7 @@ namespace WiDAC
             Dictionary<Screen, string> screens = new Dictionary<Screen, string>();
             foreach (Screen screen in Screen.AllScreens)
             {
-                screens.Add(screen, String.Format("{0} [{1}x{2}]", screen.DeviceName, screen.Bounds.Width, screen.Bounds.Height));
+                screens.Add(screen, String.Format("Offset:({0},{1}) - Resolution:{2}x{3}", screen.Bounds.X, screen.Bounds.Y, screen.Bounds.Width, screen.Bounds.Height));
             }
 
             SetComboBoxData(screenComboBox, screens);
@@ -165,10 +184,10 @@ namespace WiDAC
                 { 192 * 1024, "96 kbps" }
             });
 
-            SetComboBoxData(videoBitrateComboBox, new Dictionary<int, string>() { 
-                { 200 * 1024, "400 kbps" },
-                { 400 * 1024, "600 kbps" },
-                { 800 * 1024, "800 kbps" }
+            SetComboBoxData(crfComboBox, new Dictionary<int, string>() { 
+                { 18, "High Quality - 18" },
+                { 23, "Normal Quality - 23" },
+                { 28, "Low Quality - 28" }
             });
 
         }
@@ -195,6 +214,17 @@ namespace WiDAC
             }
         }
 
+        private void DeleteFiles(String[] fileNames)
+        {
+            foreach (var fileName in fileNames)
+            {
+                if (File.Exists(fileName))
+                {
+                    File.Delete(fileName);
+                }
+            }
+        }
+
         private void Start()
         {
             if (recording)
@@ -202,17 +232,13 @@ namespace WiDAC
                 return;
             }
 
-            stopwatch.Restart();
-            recordingTimer.Start();
-            frameCount = 0;
-
-            //Stream stream = new MemoryStream(1024 * 1024 * 2); //2M buffer
+            DeleteFiles(new string[]{InputAudioFileName, OutputAudioFileName, CapturedVideoFileName});
 
             outputCapture = new WasapiLoopbackCapture();
 
             outputCapture.Device = outputDeviceComboBox.SelectedItem as MMDevice;
             outputCapture.Initialize();
-            outputWaveWriter = new WaveWriter("out.wav", outputCapture.WaveFormat);
+            outputWaveWriter = new WaveWriter(OutputAudioFileName, outputCapture.WaveFormat);
 
             outputCapture.DataAvailable +=
                 (s, capData) => outputWaveWriter.Write(capData.Data, capData.Offset, capData.ByteCount);
@@ -222,13 +248,22 @@ namespace WiDAC
             inputCapture = new WasapiCapture();
             inputCapture.Device = inputDeviceComboBox.SelectedItem as MMDevice;
             inputCapture.Initialize();
-            inputWaveWriter = new WaveWriter("in.wav", inputCapture.WaveFormat);
+            inputWaveWriter = new WaveWriter(InputAudioFileName, inputCapture.WaveFormat);
 
             inputCapture.DataAvailable +=
                 (s, capData) => inputWaveWriter.Write(capData.Data, capData.Offset, capData.ByteCount);
             inputCapture.Start();
 
             recording = true;
+
+            groupBox1.Enabled = false;
+            groupBox2.Enabled = false;
+            groupBox3.Enabled = false;
+
+            Rectangle screenRectangle = ((Screen) screenComboBox.SelectedValue).Bounds;
+            //TODO call FFMPEG
+            Trace.TraceInformation("video file: {0}, video crf: {1}, video offset x: {2}, video offset y: {3}",
+                CapturedVideoFileName, crfComboBox.SelectedValue, screenRectangle.X, screenRectangle.Y);
 
         }
 
@@ -244,10 +279,14 @@ namespace WiDAC
                 return;
             }
 
-            recordingTimer.Stop();
-            stopwatch.Restart();
             outputCapture.Stop();
             inputCapture.Stop();
+
+            groupBox1.Enabled = true;
+            groupBox2.Enabled = true;
+            groupBox3.Enabled = true;
+
+            //TODO stop FFMPEG
 
             if (outputWaveWriter != null)
             {
@@ -266,9 +305,5 @@ namespace WiDAC
             recording = false;
         }
 
-        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
-        {
-            Stop();
-        }
     }
 }

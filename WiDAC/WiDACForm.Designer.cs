@@ -40,16 +40,17 @@
             this.label6 = new System.Windows.Forms.Label();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
             this.label7 = new System.Windows.Forms.Label();
-            this.videoBitrateComboBox = new System.Windows.Forms.ComboBox();
+            this.crfComboBox = new System.Windows.Forms.ComboBox();
             this.frameRateComboBox = new System.Windows.Forms.ComboBox();
             this.label9 = new System.Windows.Forms.Label();
             this.screenComboBox = new System.Windows.Forms.ComboBox();
             this.label10 = new System.Windows.Forms.Label();
             this.captureCheckBox = new System.Windows.Forms.CheckBox();
-            this.previewPanel = new System.Windows.Forms.Panel();
+            this.previewPanel = new System.Windows.Forms.PictureBox();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.groupBox3.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.previewPanel)).BeginInit();
             this.SuspendLayout();
             // 
             // label1
@@ -153,7 +154,7 @@
             // groupBox3
             // 
             this.groupBox3.Controls.Add(this.label7);
-            this.groupBox3.Controls.Add(this.videoBitrateComboBox);
+            this.groupBox3.Controls.Add(this.crfComboBox);
             this.groupBox3.Controls.Add(this.frameRateComboBox);
             this.groupBox3.Controls.Add(this.label9);
             this.groupBox3.Controls.Add(this.screenComboBox);
@@ -168,20 +169,20 @@
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(55, 76);
+            this.label7.Location = new System.Drawing.Point(64, 76);
             this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(37, 13);
+            this.label7.Size = new System.Drawing.Size(28, 13);
             this.label7.TabIndex = 9;
-            this.label7.Text = "Bitrate";
+            this.label7.Text = "CRF";
             // 
             // videoBitrateComboBox
             // 
-            this.videoBitrateComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.videoBitrateComboBox.FormattingEnabled = true;
-            this.videoBitrateComboBox.Location = new System.Drawing.Point(98, 73);
-            this.videoBitrateComboBox.Name = "videoBitrateComboBox";
-            this.videoBitrateComboBox.Size = new System.Drawing.Size(239, 21);
-            this.videoBitrateComboBox.TabIndex = 8;
+            this.crfComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.crfComboBox.FormattingEnabled = true;
+            this.crfComboBox.Location = new System.Drawing.Point(98, 73);
+            this.crfComboBox.Name = "crfComboBox";
+            this.crfComboBox.Size = new System.Drawing.Size(239, 21);
+            this.crfComboBox.TabIndex = 8;
             // 
             // frameRateComboBox
             // 
@@ -222,7 +223,7 @@
             // captureCheckBox
             // 
             this.captureCheckBox.Appearance = System.Windows.Forms.Appearance.Button;
-            this.captureCheckBox.Location = new System.Drawing.Point(382, 31);
+            this.captureCheckBox.Location = new System.Drawing.Point(378, 31);
             this.captureCheckBox.Name = "captureCheckBox";
             this.captureCheckBox.Size = new System.Drawing.Size(140, 133);
             this.captureCheckBox.TabIndex = 11;
@@ -233,16 +234,17 @@
             // previewPanel
             // 
             this.previewPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.previewPanel.Location = new System.Drawing.Point(382, 189);
+            this.previewPanel.Location = new System.Drawing.Point(378, 189);
             this.previewPanel.Name = "previewPanel";
             this.previewPanel.Size = new System.Drawing.Size(140, 100);
-            this.previewPanel.TabIndex = 12;
+            this.previewPanel.TabIndex = 13;
+            this.previewPanel.TabStop = false;
             // 
             // WiDACForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(539, 301);
+            this.ClientSize = new System.Drawing.Size(539, 305);
             this.Controls.Add(this.previewPanel);
             this.Controls.Add(this.captureCheckBox);
             this.Controls.Add(this.groupBox3);
@@ -250,13 +252,13 @@
             this.Controls.Add(this.groupBox1);
             this.Name = "WiDACForm";
             this.Text = "WiDAC";
-            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Form1_FormClosed);
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             this.groupBox2.ResumeLayout(false);
             this.groupBox2.PerformLayout();
             this.groupBox3.ResumeLayout(false);
             this.groupBox3.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.previewPanel)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -275,13 +277,13 @@
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.GroupBox groupBox3;
         private System.Windows.Forms.Label label7;
-        private System.Windows.Forms.ComboBox videoBitrateComboBox;
+        private System.Windows.Forms.ComboBox crfComboBox;
         private System.Windows.Forms.ComboBox frameRateComboBox;
         private System.Windows.Forms.Label label9;
         private System.Windows.Forms.ComboBox screenComboBox;
         private System.Windows.Forms.Label label10;
         private System.Windows.Forms.CheckBox captureCheckBox;
-        private System.Windows.Forms.Panel previewPanel;
+        private System.Windows.Forms.PictureBox previewPanel;
     }
 }
 
