@@ -250,7 +250,7 @@
             this.Controls.Add(this.groupBox1);
             this.Name = "WiDACForm";
             this.Text = "WiDAC";
-            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Form1_FormClosed);
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.WiDACForm_FormClosed);
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             this.groupBox2.ResumeLayout(false);

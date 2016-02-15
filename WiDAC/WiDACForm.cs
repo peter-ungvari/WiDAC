@@ -14,6 +14,8 @@ using CSCore.CoreAudioAPI;
 using System.Threading;
 using CSCore.Codecs.WAV;
 using System.IO;
+using System.Runtime.InteropServices;
+using NReco.VideoConverter;
 
 namespace WiDAC
 {
@@ -28,6 +30,8 @@ namespace WiDAC
         private long frameCount;
         System.Windows.Forms.Timer recordingTimer = new System.Windows.Forms.Timer();
         System.Windows.Forms.Timer previewTimer = new System.Windows.Forms.Timer();
+        MemoryStream videoInputStream = new MemoryStream(1024 * 1024 * 50); //50M buffer
+        private ConvertLiveMediaTask videoTask;
 
         public WiDACForm()
         {
@@ -40,7 +44,7 @@ namespace WiDAC
 
             recordingTimer.Interval = 40;
 
-            previewTimer.Interval = 1000;
+            previewTimer.Interval = 500;
             previewTimer.Start();
 
             recordingTimer.Tick += RecordingTimerTick;
@@ -96,8 +100,19 @@ namespace WiDAC
                     ++frameCount;
 
                     Bitmap bmpScreenshot = CreateScreenshot();
-                    // Save the screenshot to the specified path that the user has chosen.
-                    bmpScreenshot.Save(string.Format("Screenshot{0}.png", frameCount), ImageFormat.Png);
+
+                    //bmpScreenshot.Save(videoInputStream, ImageFormat.Bmp);
+                    /*var bd = bmpScreenshot.LockBits(new Rectangle(0, 0, bmpScreenshot.Width, bmpScreenshot.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+                    byte[] buf = new byte[bd.Stride * bmpScreenshot.Height];
+                    Marshal.Copy(bd.Scan0, buf, 0, buf.Length);*/
+                    
+                    //var ms = new MemoryStream();
+                    //bmpScreenshot.Save(ms, ImageFormat.);
+                    var buf = new byte[] {0,0,0,0};//ms.ToArray();
+                    
+                    videoTask.Write(buf, 0, buf.Length);
+                    //bmpScreenshot.UnlockBits(bd);
+
                     bmpScreenshot.Dispose();
                 }
                 catch (ArgumentException ex)
@@ -202,11 +217,22 @@ namespace WiDAC
                 return;
             }
 
+            FFMpegConverter ffMpeg = new FFMpegConverter();
+            videoTask = ffMpeg.ConvertLiveMedia(videoInputStream, Format.raw_video, "out.avi", Format.avi, new ConvertSettings()
+            {
+                VideoCodec = "libx264",
+                VideoFrameRate = (int)frameRateComboBox.SelectedValue,
+                CustomInputArgs = "-pix_fmt bgr24",
+                CustomOutputArgs = "-crf 23"
+            });
+
             stopwatch.Restart();
             recordingTimer.Start();
             frameCount = 0;
 
-            //Stream stream = new MemoryStream(1024 * 1024 * 2); //2M buffer
+            
+
+            //videoTask.Start();
 
             outputCapture = new WasapiLoopbackCapture();
 
@@ -249,9 +275,12 @@ namespace WiDAC
             outputCapture.Stop();
             inputCapture.Stop();
 
-            if (outputWaveWriter != null)
+            videoInputStream.Dispose();
+            //videoTask.Stop(false);
+
+            if (inputWaveWriter != null)
             {
-                outputWaveWriter.Dispose();
+                inputWaveWriter.Dispose();
             }
 
             if (inputWaveWriter != null)
@@ -263,10 +292,12 @@ namespace WiDAC
 
             inputCapture.Dispose();
 
+            videoBitrateComboBox.Dispose();
+
             recording = false;
         }
 
-        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        private void WiDACForm_FormClosed(object sender, FormClosedEventArgs e)
         {
             Stop();
         }
