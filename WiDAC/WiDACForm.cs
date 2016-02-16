@@ -16,7 +16,6 @@ using CSCore.Codecs.WAV;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows.Forms.VisualStyles;
-using NReco.VideoConverter;
 
 namespace WiDAC
 {
@@ -32,7 +31,7 @@ namespace WiDAC
         private WaveWriter inputWaveWriter;
         private bool recording;
         private System.Windows.Forms.Timer previewTimer = new System.Windows.Forms.Timer();
-        private FFMpegConverter ffmpeg = new FFMpegConverter();
+        private System.Diagnostics.Process process;
 
         public WiDACForm()
         {
@@ -51,6 +50,11 @@ namespace WiDAC
 
         private void Question(object sender, CancelEventArgs e)
         {
+            if (!recording)
+            {
+                return;
+            }
+
             DialogResult questionResult = MessageBox.Show(
                 "Do you want to save the captured audio and video?\n\n" +
                 "Yes: Save captured media to a video file.\n" +
@@ -84,17 +88,21 @@ namespace WiDAC
                     return;
                 }
 
-                Trace.TraceInformation("audio bitrate: {0}, audio sample rate: {1}, audio input file1: {2}, audio input file2: {3}, video file: {4}, output file: {5}",
-                    bitRateComboBox.SelectedValue, rateComboBox.SelectedValue, OutputAudioFileName, InputAudioFileName, CapturedVideoFileName, dialog.FileName);
+                DeleteFiles(new string[] { dialog.FileName });
 
-                ffmpeg.ConvertMedia(null, null, dialog.FileName, Format.mp4, new ConvertSettings()
-                {
-                    CustomInputArgs = String.Format("-i {0} -i {1} -i {2}", OutputAudioFileName, InputAudioFileName, CapturedVideoFileName),
-                    AudioCodec = "aac",
-                    AudioSampleRate = (int)rateComboBox.SelectedValue,
-                    CustomOutputArgs = String.Format("-ac 1 -ab {0}", bitRateComboBox.SelectedIndex),
-                    VideoCodec = "copy"
-                });
+                process = new System.Diagnostics.Process();
+                System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+                startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+                startInfo.CreateNoWindow = true;
+                startInfo.FileName = "ffmpeg.exe";
+                startInfo.Arguments = String.Format("-i {0} -i {1} -i {2} -af amerge=inputs=2 -af dynaudnorm -c:v copy -c:a aac -ac 1 -ab {3} -ar {4} \"{5}\"",
+                            OutputAudioFileName, InputAudioFileName, CapturedVideoFileName, bitRateComboBox.SelectedValue, rateComboBox.SelectedValue, dialog.FileName);
+                Trace.TraceInformation(startInfo.Arguments);
+                process.StartInfo = startInfo;
+                process.StartInfo.UseShellExecute = false;
+                process.Start();
+                process.WaitForExit();
+                process.Close();
 
             }
         }
@@ -185,8 +193,11 @@ namespace WiDAC
             SetComboBoxData(frameRateComboBox, new Dictionary<int, string>()
             {
                 { 1, "1 fps"},
+                { 3, "3 fps"},
                 { 6, "6 fps"}
             });
+
+            frameRateComboBox.SelectedIndex = 2;
 
             SetComboBoxData(bitRateComboBox, new Dictionary<int, string>() { 
                 { 32 * 1024, "32 kbps" },
@@ -194,12 +205,15 @@ namespace WiDAC
                 { 192 * 1024, "96 kbps" }
             });
 
+            bitRateComboBox.SelectedIndex = 1;
+
             SetComboBoxData(crfComboBox, new Dictionary<int, string>() { 
                 { 18, "High Quality - 18" },
                 { 23, "Normal Quality - 23" },
                 { 28, "Low Quality - 28" }
             });
 
+            crfComboBox.SelectedIndex = 1;
         }
 
         private void LoadDevices(DataFlow dataFlow, ComboBox combobox)
@@ -275,14 +289,19 @@ namespace WiDAC
             Trace.TraceInformation("video file: {0}, video crf: {1}, video offset x: {2}, video offset y: {3}",
                 CapturedVideoFileName, crfComboBox.SelectedValue, screenRectangle.X, screenRectangle.Y);
 
-           ffmpeg.ConvertMedia("desktop", null, CapturedVideoFileName, "mp4", new ConvertSettings()
-            {
-                CustomInputArgs = String.Format("-f gdigrab -offset_x {0} -offset_y {1} -video_size {2}x{3} -i ",
-                screenRectangle.X, screenRectangle.Y, screenRectangle.Width, screenRectangle.Height),
-                VideoFrameRate = (int)frameRateComboBox.SelectedValue,
-                VideoCodec = "libx264",
-                CustomOutputArgs = String.Format("-cfr {0}", crfComboBox.SelectedValue)
-            });
+            process = new System.Diagnostics.Process();
+            System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+            startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+            startInfo.CreateNoWindow = true;
+            startInfo.FileName = "ffmpeg.exe";
+            startInfo.Arguments = String.Format(
+                    "-f gdigrab -offset_x {0} -offset_y {1} -video_size {2}x{3} -i desktop -c:v libx264 -r {4} -crf {5} {6}",
+                    screenRectangle.X, screenRectangle.Y, screenRectangle.Width, screenRectangle.Height, frameRateComboBox.SelectedValue, crfComboBox.SelectedValue, CapturedVideoFileName);
+            Trace.TraceInformation(startInfo.Arguments);
+            process.StartInfo = startInfo;
+            process.StartInfo.RedirectStandardInput = true;
+            process.StartInfo.UseShellExecute = false;
+            process.Start();
 
         }
 
@@ -300,6 +319,9 @@ namespace WiDAC
 
             outputCapture.Stop();
             inputCapture.Stop();
+            process.StandardInput.Write('q');
+            process.WaitForExit(1000);
+            process.Close();
 
             groupBox1.Enabled = true;
             groupBox2.Enabled = true;
