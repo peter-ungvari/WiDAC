@@ -40,8 +40,9 @@ namespace WiDAC
             LoadDevices(DataFlow.Capture, inputDeviceComboBox);
             LoadDevices(DataFlow.Render, outputDeviceComboBox);
 
+            tempFolderTextBox.Text = Path.GetDirectoryName(Application.ExecutablePath);
             previewPanel.BackgroundImageLayout = ImageLayout.Zoom;
-            previewTimer.Interval = 300;
+            previewTimer.Interval = 500;
             previewTimer.Start();
             previewTimer.Tick += previewTimer_Tick;
             captureCheckBox.Click += captureCheckBox_Click;
@@ -88,23 +89,39 @@ namespace WiDAC
                     return;
                 }
 
-                DeleteFiles(new string[] { dialog.FileName });
+                try
+                {
+                    DeleteFiles(new string[] { dialog.FileName });
+                }
+                catch (Exception)
+                {
+                    MessageBox.Show(this, "The video file cannot be overwrittten. Please release it.",
+                        "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    e.Cancel = true;
+                    return;
+                }
 
                 process = new System.Diagnostics.Process();
+                process.Exited += process_Exited;
                 System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
                 startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
                 startInfo.CreateNoWindow = true;
                 startInfo.FileName = "ffmpeg.exe";
                 startInfo.Arguments = String.Format("-i {0} -i {1} -i {2} -af amerge=inputs=2 -af dynaudnorm -c:v copy -c:a aac -ac 1 -ab {3} -ar {4} \"{5}\"",
-                            OutputAudioFileName, InputAudioFileName, CapturedVideoFileName, bitRateComboBox.SelectedValue, rateComboBox.SelectedValue, dialog.FileName);
+                            GetTempFilePath(OutputAudioFileName), GetTempFilePath(InputAudioFileName), GetTempFilePath(CapturedVideoFileName),
+                            bitRateComboBox.SelectedValue, rateComboBox.SelectedValue, dialog.FileName);
                 Trace.TraceInformation(startInfo.Arguments);
                 process.StartInfo = startInfo;
                 process.StartInfo.UseShellExecute = false;
+                UseWaitCursor = true;
                 process.Start();
-                process.WaitForExit();
-                process.Close();
-
             }
+        }
+
+        void process_Exited(object sender, EventArgs e)
+        {
+            UseWaitCursor = false;
+            ((Process)sender).Dispose();
         }
 
         void previewTimer_Tick(object sender, EventArgs e)
@@ -194,10 +211,13 @@ namespace WiDAC
             {
                 { 1, "1 fps"},
                 { 3, "3 fps"},
-                { 6, "6 fps"}
+                { 6, "6 fps"},
+                { 20, "20 fps"},
+                { 25, "25 fps"},
+                { 30, "30 fps"},
             });
 
-            frameRateComboBox.SelectedIndex = 2;
+            frameRateComboBox.SelectedIndex = 1;
 
             SetComboBoxData(bitRateComboBox, new Dictionary<int, string>() { 
                 { 32 * 1024, "32 kbps" },
@@ -256,23 +276,32 @@ namespace WiDAC
                 return;
             }
 
-            DeleteFiles(new string[] { InputAudioFileName, OutputAudioFileName, CapturedVideoFileName });
+            try
+            {
+                DeleteFiles(new string[] { InputAudioFileName, OutputAudioFileName, CapturedVideoFileName });
+            }
+            catch (Exception)
+            {
+                MessageBox.Show(this, "Temporary files cannot be recreated. Please release them.",
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             outputCapture = new WasapiLoopbackCapture();
 
             outputCapture.Device = outputDeviceComboBox.SelectedItem as MMDevice;
             outputCapture.Initialize();
-            outputWaveWriter = new WaveWriter(OutputAudioFileName, outputCapture.WaveFormat);
+            outputWaveWriter = new WaveWriter(GetTempFilePath(OutputAudioFileName), outputCapture.WaveFormat);
 
             outputCapture.DataAvailable +=
                 (s, capData) => outputWaveWriter.Write(capData.Data, capData.Offset, capData.ByteCount);
             outputCapture.Start();
 
 
-            inputCapture = new WasapiCapture();
+            inputCapture = new WasapiCapture(true, AudioClientShareMode.Shared);
             inputCapture.Device = inputDeviceComboBox.SelectedItem as MMDevice;
             inputCapture.Initialize();
-            inputWaveWriter = new WaveWriter(InputAudioFileName, inputCapture.WaveFormat);
+            inputWaveWriter = new WaveWriter(GetTempFilePath(InputAudioFileName), inputCapture.WaveFormat);
 
             inputCapture.DataAvailable +=
                 (s, capData) => inputWaveWriter.Write(capData.Data, capData.Offset, capData.ByteCount);
@@ -283,6 +312,7 @@ namespace WiDAC
             groupBox1.Enabled = false;
             groupBox2.Enabled = false;
             groupBox3.Enabled = false;
+            groupBox4.Enabled = false;
 
             Rectangle screenRectangle = ((Screen)screenComboBox.SelectedValue).Bounds;
 
@@ -295,8 +325,8 @@ namespace WiDAC
             startInfo.CreateNoWindow = true;
             startInfo.FileName = "ffmpeg.exe";
             startInfo.Arguments = String.Format(
-                    "-f gdigrab -offset_x {0} -offset_y {1} -video_size {2}x{3} -i desktop -c:v libx264 -r {4} -crf {5} {6}",
-                    screenRectangle.X, screenRectangle.Y, screenRectangle.Width, screenRectangle.Height, frameRateComboBox.SelectedValue, crfComboBox.SelectedValue, CapturedVideoFileName);
+                    "-f gdigrab -offset_x {0} -offset_y {1} -video_size {2}x{3} -i desktop -c:v libx264 -pix_fmt yuv420p -r {4} -crf {5} {6}",
+                    screenRectangle.X, screenRectangle.Y, screenRectangle.Width, screenRectangle.Height, frameRateComboBox.SelectedValue, crfComboBox.SelectedValue, GetTempFilePath(CapturedVideoFileName));
             Trace.TraceInformation(startInfo.Arguments);
             process.StartInfo = startInfo;
             process.StartInfo.RedirectStandardInput = true;
@@ -305,12 +335,13 @@ namespace WiDAC
 
         }
 
+        private string GetTempFilePath(string fileName)
+        {
+            return String.Format(@"{0}\{1}", tempFolderTextBox.Text, fileName);
+        }
+
         private void Stop()
         {
-            if (outputCapture == null)
-            {
-                return;
-            }
 
             if (!recording)
             {
@@ -326,6 +357,7 @@ namespace WiDAC
             groupBox1.Enabled = true;
             groupBox2.Enabled = true;
             groupBox3.Enabled = true;
+            groupBox4.Enabled = true;
 
             if (outputWaveWriter != null)
             {
@@ -342,6 +374,18 @@ namespace WiDAC
             inputCapture.Dispose();
 
             recording = false;
+        }
+
+        private void tempFolderBrowserButton_Click(object sender, EventArgs e)
+        {
+            FolderBrowserDialog browser = new FolderBrowserDialog();
+            browser.SelectedPath = tempFolderTextBox.Text;
+
+            DialogResult result = browser.ShowDialog();
+            if (DialogResult.OK == result)
+            {
+                tempFolderTextBox.Text = browser.SelectedPath;
+            }
         }
 
     }

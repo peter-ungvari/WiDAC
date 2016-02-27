@@ -47,10 +47,15 @@
             this.label10 = new System.Windows.Forms.Label();
             this.captureCheckBox = new System.Windows.Forms.CheckBox();
             this.previewPanel = new System.Windows.Forms.PictureBox();
+            this.groupBox4 = new System.Windows.Forms.GroupBox();
+            this.label3 = new System.Windows.Forms.Label();
+            this.tempFolderTextBox = new System.Windows.Forms.TextBox();
+            this.tempFolderBrowserButton = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.groupBox3.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.previewPanel)).BeginInit();
+            this.groupBox4.SuspendLayout();
             this.SuspendLayout();
             // 
             // label1
@@ -175,7 +180,7 @@
             this.label7.TabIndex = 9;
             this.label7.Text = "CRF";
             // 
-            // videoBitrateComboBox
+            // crfComboBox
             // 
             this.crfComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.crfComboBox.FormattingEnabled = true;
@@ -240,18 +245,60 @@
             this.previewPanel.TabIndex = 13;
             this.previewPanel.TabStop = false;
             // 
+            // groupBox4
+            // 
+            this.groupBox4.Controls.Add(this.tempFolderBrowserButton);
+            this.groupBox4.Controls.Add(this.tempFolderTextBox);
+            this.groupBox4.Controls.Add(this.label3);
+            this.groupBox4.Location = new System.Drawing.Point(12, 295);
+            this.groupBox4.Name = "groupBox4";
+            this.groupBox4.Size = new System.Drawing.Size(351, 51);
+            this.groupBox4.TabIndex = 14;
+            this.groupBox4.TabStop = false;
+            this.groupBox4.Text = "General";
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(29, 22);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(63, 13);
+            this.label3.TabIndex = 2;
+            this.label3.Text = "Temp folder";
+            // 
+            // tempFolderTextBox
+            // 
+            this.tempFolderTextBox.Location = new System.Drawing.Point(98, 19);
+            this.tempFolderTextBox.Name = "tempFolderTextBox";
+            this.tempFolderTextBox.ReadOnly = true;
+            this.tempFolderTextBox.Size = new System.Drawing.Size(209, 20);
+            this.tempFolderTextBox.TabIndex = 3;
+            // 
+            // tempFolderBrowserButton
+            // 
+            this.tempFolderBrowserButton.Location = new System.Drawing.Point(313, 19);
+            this.tempFolderBrowserButton.Name = "tempFolderBrowserButton";
+            this.tempFolderBrowserButton.Size = new System.Drawing.Size(24, 20);
+            this.tempFolderBrowserButton.TabIndex = 4;
+            this.tempFolderBrowserButton.Text = "...";
+            this.tempFolderBrowserButton.UseVisualStyleBackColor = true;
+            this.tempFolderBrowserButton.Click += new System.EventHandler(this.tempFolderBrowserButton_Click);
+            // 
             // WiDACForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(539, 305);
+            this.ClientSize = new System.Drawing.Size(539, 358);
+            this.Controls.Add(this.groupBox4);
             this.Controls.Add(this.previewPanel);
             this.Controls.Add(this.captureCheckBox);
             this.Controls.Add(this.groupBox3);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
             this.Name = "WiDACForm";
-            this.Text = "WiDAC";
+            this.Text = "WiDAC 1.2";
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             this.groupBox2.ResumeLayout(false);
@@ -259,6 +306,8 @@
             this.groupBox3.ResumeLayout(false);
             this.groupBox3.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.previewPanel)).EndInit();
+            this.groupBox4.ResumeLayout(false);
+            this.groupBox4.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -284,6 +333,10 @@
         private System.Windows.Forms.Label label10;
         private System.Windows.Forms.CheckBox captureCheckBox;
         private System.Windows.Forms.PictureBox previewPanel;
+        private System.Windows.Forms.GroupBox groupBox4;
+        private System.Windows.Forms.Button tempFolderBrowserButton;
+        private System.Windows.Forms.TextBox tempFolderTextBox;
+        private System.Windows.Forms.Label label3;
     }
 }
 
